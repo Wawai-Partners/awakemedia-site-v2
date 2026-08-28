@@ -50,8 +50,67 @@ export default function Hero({ ready }) {
     if (!video) return
 
     video.muted = true
-    const play = video.play()
-    if (play && typeof play.catch === 'function') play.catch(() => {})
+
+    const attemptPlay = () => {
+      const play = video.play()
+      if (play && typeof play.catch === 'function') play.catch(() => {})
+    }
+
+    attemptPlay()
+
+    // A background film frozen mid-clip reads as a broken page. The browser
+    // resumes a plain buffer underrun on its own, but a decoder that gives up
+    // under load leaves the element "playing" with a frozen currentTime and
+    // fires nothing. Poll for that and reload the one stream that recovers it.
+    let lastTime = -1
+    let stalledTicks = 0
+
+    // Re-fetching is capped: a source the browser simply cannot play (missing
+    // H.264 support, a 404) fails again instantly, and an uncapped retry would
+    // hammer the network forever behind a scrim nobody can see.
+    let reloadsLeft = 3
+    const recover = () => {
+      if (reloadsLeft <= 0) return
+      reloadsLeft -= 1
+      video.load()
+      attemptPlay()
+    }
+
+    const watchdog = setInterval(() => {
+      if (document.hidden || video.readyState === 0) return
+
+      if (video.paused) {
+        attemptPlay()
+        return
+      }
+
+      if (video.currentTime === lastTime) {
+        stalledTicks += 1
+        // ~3s of no progress: past any normal seek or rebuffer.
+        if (stalledTicks >= 6) {
+          stalledTicks = 0
+          recover()
+        }
+      } else {
+        stalledTicks = 0
+        lastTime = video.currentTime
+      }
+    }, 500)
+
+    // A decode error is terminal unless the stream is re-fetched.
+    video.addEventListener('error', recover)
+
+    // Backgrounded tabs get playback suspended; resume on return.
+    const onVisibility = () => {
+      if (!document.hidden && video.paused) attemptPlay()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      clearInterval(watchdog)
+      video.removeEventListener('error', recover)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   // Both gates: the curtain has to be gone AND the 3s mark reached.
@@ -73,6 +132,7 @@ export default function Hero({ ready }) {
           ref={videoRef}
           src={VIDEO_SRC}
           muted
+          loop
           autoPlay
           playsInline
           preload="auto"
