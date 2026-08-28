@@ -156,17 +156,19 @@ export default function Hero({ ready }) {
         />
       </motion.div>
 
-      {/* Legibility stack: flat scrim, then top/bottom fades into the section. */}
+      {/* Legibility stack: flat scrim, then top/bottom fades into the section.
+          Kept deliberately light so the film reads through it — the type
+          carries its own shadow rather than relying on a darker scrim. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-[1] bg-ink/55"
+        className="pointer-events-none absolute inset-0 z-[1] bg-ink/35"
       />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-[1]"
         style={{
           background:
-            'linear-gradient(180deg, rgba(4,5,8,0.85) 0%, rgba(4,5,8,0.25) 35%, rgba(4,5,8,0.45) 70%, #0c0c0c 100%)',
+            'linear-gradient(180deg, rgba(4,5,8,0.8) 0%, rgba(4,5,8,0.12) 38%, rgba(4,5,8,0.3) 72%, #0c0c0c 100%)',
         }}
       />
 
@@ -183,7 +185,10 @@ export default function Hero({ ready }) {
           style={{ transformOrigin: 'center center' }}
           className="flex w-full flex-col items-center will-change-transform"
         >
-          <h1 className="display text-[10vw] text-white sm:text-[7.5vw] lg:text-[5.6vw]">
+          <h1
+            className="display text-[10vw] text-white sm:text-[7.5vw] lg:text-[5.6vw]"
+            style={{ textShadow: '0 2px 28px rgba(4,5,8,0.75)' }}
+          >
             {LINES.map((line, index) => (
               <motion.span
                 key={line}
@@ -203,6 +208,7 @@ export default function Hero({ ready }) {
 
           <motion.p
             className="mt-10 max-w-xl text-base leading-relaxed text-dim/85 sm:text-lg"
+            style={{ textShadow: '0 1px 16px rgba(4,5,8,0.8)' }}
             initial={{ opacity: 0 }}
             animate={show ? { opacity: 1 } : { opacity: 0 }}
             transition={{ duration: 1, ease: EASE, delay: 0.45 }}
