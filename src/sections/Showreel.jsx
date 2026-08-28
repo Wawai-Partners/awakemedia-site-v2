@@ -8,6 +8,11 @@ const VIDEO_SRC = import.meta.env.BASE_URL + 'videos/reel-scrub.mp4'
 // A full-window sweep covers 80% of the clip.
 const SCRUB_SENSITIVITY = 0.8
 
+// The clip is a 1080p all-intra encode: every frame is a keyframe, which is
+// what makes scrubbing instant but also makes it ~24 MB. Long enough for the
+// hero (3.5 MB) to have had the connection to itself first.
+const HERO_HEADSTART_MS = 4000
+
 /**
  * Full-bleed video scrubbed by horizontal cursor direction: moving right
  * runs the clip forward, moving left runs it back, and the timeline maps
@@ -20,17 +25,17 @@ export default function Showreel() {
   const [scrubbing, setScrubbing] = useState(true)
   const [loadSrc, setLoadSrc] = useState(false)
 
-  // The hero autoplays immediately, so this clip must not race it for the
-  // connection — fetching both at once starves the hero and freezes it
-  // mid-play. Attach the source only once this section is roughly a viewport
-  // away, by which point the hero is buffered.
+  // Fetching this alongside the hero starves the hero and freezes it
+  // mid-play, so it waits — but it is far too big to start only once the
+  // section is nearly on screen. Whichever comes first: the hero's head
+  // start elapsing, or the section coming into range.
   useEffect(() => {
     const section = sectionRef.current
-    if (!section) return
 
-    if (typeof IntersectionObserver !== 'function') {
-      setLoadSrc(true)
-      return
+    const timer = setTimeout(() => setLoadSrc(true), HERO_HEADSTART_MS)
+
+    if (!section || typeof IntersectionObserver !== 'function') {
+      return () => clearTimeout(timer)
     }
 
     const observer = new IntersectionObserver(
@@ -40,12 +45,16 @@ export default function Showreel() {
           observer.disconnect()
         }
       },
-      // Half a viewport of lead. A full viewport reaches this section while
-      // the hero is still buffering, which defeats the point.
+      // Half a viewport of lead. A full viewport already overlaps this
+      // section at page load, which would defeat the wait entirely.
       { rootMargin: '50% 0px' },
     )
     observer.observe(section)
-    return () => observer.disconnect()
+
+    return () => {
+      clearTimeout(timer)
+      observer.disconnect()
+    }
   }, [])
 
   useEffect(() => {
