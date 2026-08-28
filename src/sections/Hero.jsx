@@ -76,7 +76,20 @@ export default function Hero({ ready }) {
       attemptPlay()
     }
 
+    // The clip plays once and holds its last frame. Every recovery path below
+    // has to respect that: play() on an ended element rewinds to 0, so an
+    // unguarded nudge would loop the film even with no `loop` attribute.
+    let finished = false
+    const onEnded = () => {
+      finished = true
+    }
+    video.addEventListener('ended', onEnded)
+
     const watchdog = setInterval(() => {
+      if (finished) {
+        clearInterval(watchdog)
+        return
+      }
       if (document.hidden || video.readyState === 0) return
 
       if (video.paused) {
@@ -98,17 +111,21 @@ export default function Hero({ ready }) {
     }, 500)
 
     // A decode error is terminal unless the stream is re-fetched.
-    video.addEventListener('error', recover)
+    const onError = () => {
+      if (!finished) recover()
+    }
+    video.addEventListener('error', onError)
 
     // Backgrounded tabs get playback suspended; resume on return.
     const onVisibility = () => {
-      if (!document.hidden && video.paused) attemptPlay()
+      if (!document.hidden && !finished && video.paused) attemptPlay()
     }
     document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
       clearInterval(watchdog)
-      video.removeEventListener('error', recover)
+      video.removeEventListener('ended', onEnded)
+      video.removeEventListener('error', onError)
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
@@ -132,7 +149,6 @@ export default function Hero({ ready }) {
           ref={videoRef}
           src={VIDEO_SRC}
           muted
-          loop
           autoPlay
           playsInline
           preload="auto"
