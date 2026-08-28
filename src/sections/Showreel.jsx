@@ -18,6 +18,35 @@ export default function Showreel() {
   const sectionRef = useRef(null)
   const videoRef = useRef(null)
   const [scrubbing, setScrubbing] = useState(true)
+  const [loadSrc, setLoadSrc] = useState(false)
+
+  // The hero autoplays immediately, so this clip must not race it for the
+  // connection — fetching both at once starves the hero and freezes it
+  // mid-play. Attach the source only once this section is roughly a viewport
+  // away, by which point the hero is buffered.
+  useEffect(() => {
+    const section = sectionRef.current
+    if (!section) return
+
+    if (typeof IntersectionObserver !== 'function') {
+      setLoadSrc(true)
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setLoadSrc(true)
+          observer.disconnect()
+        }
+      },
+      // Half a viewport of lead. A full viewport reaches this section while
+      // the hero is still buffering, which defeats the point.
+      { rootMargin: '50% 0px' },
+    )
+    observer.observe(section)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -29,13 +58,17 @@ export default function Showreel() {
       setScrubbing(false)
       video.loop = true
       video.autoplay = true
-      const play = video.play()
-      if (play && typeof play.catch === 'function') play.catch(() => {})
+      // Only meaningful once the source is attached; autoplay covers the
+      // case where this runs first.
+      if (loadSrc) {
+        const play = video.play()
+        if (play && typeof play.catch === 'function') play.catch(() => {})
+      }
       return
     }
 
     setScrubbing(true)
-  }, [])
+  }, [loadSrc])
 
   useEffect(() => {
     if (!scrubbing) return
@@ -56,15 +89,25 @@ export default function Showreel() {
       return rect.bottom > 0 && rect.top < window.innerHeight
     }
 
+    // Releases the guard if `seeked` never arrives — seeking into an
+    // unbuffered stretch can go quiet indefinitely, and without this the
+    // scrub stays locked for the rest of the session.
+    let seekTimeout = null
+
     const applySeek = () => {
       if (seeking) return
       seeking = true
+      if (seekTimeout) clearTimeout(seekTimeout)
+      seekTimeout = setTimeout(() => {
+        seeking = false
+      }, 1000)
       video.currentTime = target
     }
 
     // Only queue the next seek once the previous one landed, otherwise
     // the browser drops them and the scrub stutters.
     const onSeeked = () => {
+      if (seekTimeout) clearTimeout(seekTimeout)
       seeking = false
       if (Math.abs(video.currentTime - target) > 0.02) applySeek()
     }
@@ -99,10 +142,11 @@ export default function Showreel() {
     video.addEventListener('seeked', onSeeked)
 
     return () => {
+      if (seekTimeout) clearTimeout(seekTimeout)
       window.removeEventListener('mousemove', onMouseMove)
       video.removeEventListener('seeked', onSeeked)
     }
-  }, [scrubbing])
+  }, [scrubbing, loadSrc])
 
   return (
     <section
@@ -112,7 +156,7 @@ export default function Showreel() {
     >
       <video
         ref={videoRef}
-        src={VIDEO_SRC}
+        src={loadSrc ? VIDEO_SRC : undefined}
         muted
         playsInline
         preload="auto"
