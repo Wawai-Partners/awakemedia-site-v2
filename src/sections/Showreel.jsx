@@ -3,7 +3,7 @@ import { RevealBlock } from '../components/Reveal.jsx'
 
 // All-intra re-encode of the reel clip: every frame is a keyframe, so
 // seeking costs milliseconds instead of ~80ms per step.
-const VIDEO_SRC = '/videos/reel-scrub.mp4'
+const VIDEO_SRC = import.meta.env.BASE_URL + 'videos/reel-scrub.mp4'
 
 // A full-window sweep covers 80% of the clip.
 const SCRUB_SENSITIVITY = 0.8

@@ -4,7 +4,8 @@ import Marquee from '../components/Marquee.jsx'
 import { EASE } from '../components/Reveal.jsx'
 
 const VIDEO_SRC =
-  '/videos/ai-human-creation-in-futuristic-lab-2026-01-28-04-57-28-utc.mp4'
+  import.meta.env.BASE_URL +
+  'videos/ai-human-creation-in-futuristic-lab-2026-01-28-04-57-28-utc.mp4'
 
 const LINES = ['LAUNCH YOUR', 'WEBSITE OR PODCAST']
 
