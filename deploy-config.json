@@ -6,7 +6,7 @@
     "bucket": "awake-media-site-staging",
     "distributionId": "E7U700E74CEQO",
     "distributionDomain": "db7y71qln8l06.cloudfront.net",
-    "sitePrefix": "awakemedia-site-v2",
+    "sitePrefix": "preview/v2",
     "reservedPrefixes": []
   },
   "production": {
@@ -16,7 +16,7 @@
     "bucket": "",
     "distributionId": "",
     "distributionDomain": "",
-    "sitePrefix": "awakemedia-site-v2",
+    "sitePrefix": "",
     "reservedPrefixes": []
   }
 }
